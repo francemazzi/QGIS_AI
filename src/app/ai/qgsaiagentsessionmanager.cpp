@@ -210,24 +210,9 @@ namespace
   QStringList reviewerReadOnlyTools()
   {
     return QStringList {
-      u"echo"_s,
-      u"read_file"_s,
-      u"search_files"_s,
-      u"list_files"_s,
-      u"list_project_layers"_s,
-      u"get_active_canvas_extent"_s,
-      u"capture_map_canvas"_s,
-      u"describe_layer"_s,
-      u"query_features"_s,
-      u"identify_features_at"_s,
-      u"read_message_log"_s,
-      u"index_status"_s,
-      u"search_workspace"_s,
-      u"web_search"_s,
-      u"web_fetch"_s,
-      u"catalog_search"_s,
-      u"list_database_connections"_s,
-      u"describe_database_schema"_s,
+      u"echo"_s,           u"read_file"_s,      u"search_files"_s,         u"list_files"_s,       u"list_project_layers"_s, u"get_active_canvas_extent"_s,  u"capture_map_canvas"_s,
+      u"describe_layer"_s, u"query_features"_s, u"identify_features_at"_s, u"read_message_log"_s, u"index_status"_s,        u"search_workspace"_s,          u"web_search"_s,
+      u"web_fetch"_s,      u"catalog_search"_s, u"discovery_resolve"_s,    u"discovery_search"_s, u"discovery_status"_s,    u"list_database_connections"_s, u"describe_database_schema"_s,
       u"query_sql"_s,
     };
   }
@@ -1965,6 +1950,8 @@ QString QgsAiAgentSessionManager::buildSystemPrompt( const QString &extraContext
   const bool canDownloadFile = allowedTools.contains( u"download_file"_s );
   const bool canAddLayerFromFile = allowedTools.contains( u"add_layer_from_file"_s );
   const bool canAddLayerFromService = allowedTools.contains( u"add_layer_from_service"_s );
+  if ( allowedTools.contains( u"discovery_resolve"_s ) )
+    prompt += "Discovery workflow: discovery_resolve -> discovery_status(kind=resolve) -> discovery_search -> preview in chat -> user selects candidates, modes, destination and credit cap -> discovery_run. Tools return immediately; do not spin-poll. Use verified AOI and versioned profile; never invent coordinates, public ownership or thermal availability. Only the preview can authorize acquisition. Report operational status, missing requirements and QGIS import checks separately. Never interpret a ZIP alone as success.\n"_L1;
   const bool canDataHubExtract = allowedTools.contains( u"datahub_extract"_s );
   const bool canTreesDetect = allowedTools.contains( u"trees_detect"_s );
   const bool canRunPython = allowedTools.contains( u"run_python"_s );
