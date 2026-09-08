@@ -41,7 +41,7 @@ void QgsAiDiscoveryController::deliver( const QJsonObject &run )
        || grant.value( u"version"_s ) != run.value( u"planVersion"_s )
        || grant.value( u"maxCredits"_s ) != run.value( u"budget"_s ).toObject().value( u"maxCredits"_s ) )
   {
-    emit message( tr( "Autorizzazione del run non corrispondente all'anteprima." ) );
+    emit message( tr( "Autorizzazione del run non corrispondente all'anteprima." ) ); // # spellok: Italian UI text.
     return;
   }
   const auto selection = grant.value( u"selection"_s ).toArray();

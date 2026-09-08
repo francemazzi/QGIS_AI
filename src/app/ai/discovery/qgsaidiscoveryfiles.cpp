@@ -180,7 +180,7 @@ namespace QgsAiDiscoveryFiles
              || !existing.open( QIODevice::ReadOnly )
              || !hash.addData( &existing )
              || hash.result().toHex() != it.value().value( u"sha256"_s ).toString().toLatin1().toLower() )
-          return failure( u"La cartella esistente non corrisponde al kit; scegliere una nuova destinazione."_s );
+          return failure( u"La cartella esistente non corrisponde al kit; scegliere una nuova destinazione."_s ); // # spellok: Italian UI text.
       }
       return { manifest, {} };
     }

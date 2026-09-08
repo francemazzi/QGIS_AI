@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "qgsaidiscoverypreview.h"
-#include "moc_qgsaidiscoverypreview.cpp"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -12,6 +11,8 @@
 #include <QSpinBox>
 #include <QString>
 #include <QVBoxLayout>
+
+#include "moc_qgsaidiscoverypreview.cpp"
 
 using namespace Qt::StringLiterals;
 static QString displayLabel( const QString &id )

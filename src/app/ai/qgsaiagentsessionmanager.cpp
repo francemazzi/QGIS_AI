@@ -491,7 +491,7 @@ void QgsAiAgentSessionManager::setActiveAgent( const QString &agentName )
 
 QgsAiAgentSessionManager::~QgsAiAgentSessionManager()
 {
-  // Detach before cancelling: cancelling a still-queued task emits taskTerminated
+  // Detach before canceling: canceling a still-queued task emits taskTerminated
   // synchronously, and the finish lambda must not dispatch a request from here.
   // Then wait for the worker so it cannot touch the workspace index (destroyed right
   // after this manager) — cancel() aborts the embed, so the wait is near-instant.
@@ -2360,7 +2360,7 @@ namespace
       QString contextText() const { return mContextText; }
 
       //! TRUE once cancel() was requested (QgsTask::isCanceled() is protected).
-      bool wasCancelled() const { return mFeedback.isCanceled(); }
+      bool wasCanceled() const { return mFeedback.isCanceled(); }
 
       void cancel() override
       {
@@ -2469,11 +2469,11 @@ void QgsAiAgentSessionManager::beginRetrievalThenDispatch( QgsAiModelRouter::Pro
 
   const auto finish = [this, task, firstProvider]() {
     if ( mRetrievalTask != task )
-      return; // cancelled or superseded: ignore the late result
+      return; // canceled or superseded: ignore the late result
     mRetrievalTask = nullptr;
-    if ( task->wasCancelled() )
+    if ( task->wasCanceled() )
     {
-      // cancelled through the task manager (e.g. "cancel all" on shutdown): unlock the
+      // canceled through the task manager (e.g. "cancel all" on shutdown): unlock the
       // UI instead of dispatching a request the user never asked to keep running
       mCachedRetrievalContext.clear();
       mRetrievalContextMessageId.clear();

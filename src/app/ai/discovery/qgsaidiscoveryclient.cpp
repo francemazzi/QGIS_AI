@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "qgsaidiscoveryclient.h"
-#include "moc_qgsaidiscoveryclient.cpp"
 
 #include <memory>
 
@@ -11,6 +10,8 @@
 #include <QSettings>
 #include <QString>
 #include <QUuid>
+
+#include "moc_qgsaidiscoveryclient.cpp"
 
 using namespace Qt::StringLiterals;
 
@@ -64,7 +65,7 @@ bool QgsAiDiscoveryClient::discardUnsent( const QString &id )
   if ( !mPending.contains( id ) || mInFlight.contains( id ) || mPending.value( id ).toObject().value( u"attempts"_s ).toInt() > 0 )
     return false;
   mPending.remove( id );
-  mSnapshots.insert( id, QJsonObject { { u"requestId"_s, id }, { u"status"_s, u"CANCELLED"_s } } );
+  mSnapshots.insert( id, QJsonObject { { u"requestId"_s, id }, { u"status"_s, u"CANCELLED"_s } } ); // # spellok: API protocol status.
   save();
   return true;
 }

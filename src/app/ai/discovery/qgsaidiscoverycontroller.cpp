@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "qgsaidiscoverycontroller.h"
-#include "moc_qgsaidiscoverycontroller.cpp"
 
 #include "qgsaidiscoverydownload.h"
 #include "qgsaidiscoveryfiles.h"
@@ -25,6 +24,8 @@
 #include <QString>
 #include <QTimer>
 #include <QVBoxLayout>
+
+#include "moc_qgsaidiscoverycontroller.cpp"
 
 using namespace Qt::StringLiterals;
 
@@ -126,7 +127,7 @@ QJsonObject QgsAiDiscoveryController::execute( const QString &tool, QJsonObject 
       else if ( pending.contains( u"requestId"_s ) )
       {
         if ( mClient->discardUnsent( id ) )
-          return { { u"requestId"_s, id }, { u"status"_s, u"CANCELLED"_s } };
+          return { { u"requestId"_s, id }, { u"status"_s, u"CANCELLED"_s } }; // # spellok: API protocol status.
         auto grant = mGrants.value( id ).toObject();
         grant.insert( u"canceled"_s, true );
         mGrants.insert( id, grant );
@@ -189,7 +190,7 @@ QJsonObject QgsAiDiscoveryController::execute( const QString &tool, QJsonObject 
       }
       catch ( const QgsCsException & )
       {
-        return error( tr( "Impossibile trasformare l'area in EPSG:4326." ) );
+        return error( tr( "Impossibile trasformare l'area in EPSG:4326." ) ); // # spellok: Italian UI text.
       }
     }
   }

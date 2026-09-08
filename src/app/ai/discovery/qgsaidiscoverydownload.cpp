@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "qgsaidiscoverydownload.h"
-#include "moc_qgsaidiscoverydownload.cpp"
 
 #include <memory>
 
@@ -12,6 +11,8 @@
 #include <QNetworkReply>
 #include <QSaveFile>
 #include <QTimer>
+
+#include "moc_qgsaidiscoverydownload.cpp"
 
 QgsAiDiscoveryDownload::QgsAiDiscoveryDownload( QNetworkAccessManager *network, QObject *parent )
   : QObject( parent )
