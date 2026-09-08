@@ -18,6 +18,7 @@ class APP_EXPORT QgsAiDiscoveryClient : public QObject
     QgsAiDiscoveryClient( QNetworkAccessManager *network, Auth auth, QObject *parent = nullptr );
     void setScope( const QUrl &base, const QString &settingsKey );
     QString submit( const QString &path, const QJsonObject &body );
+    bool discardUnsent( const QString &id );
     void watch( const QString &kind, const QString &id );
     QJsonObject snapshot( const QString &id ) const;
     void resume();

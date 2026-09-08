@@ -109,14 +109,29 @@ QJsonObject QgsAiDiscoveryController::execute( const QString &tool, QJsonObject 
     return error( tr( "Accesso Strata e workspace richiesti." ) );
   if ( tool == "discovery_status"_L1 || tool == "discovery_cancel"_L1 || tool == "discovery_run"_L1 )
   {
-    const QString id = args.value( u"id"_s ).toString();
+    QString id = args.value( u"id"_s ).toString();
     if ( !QRegularExpression( u"^[A-Za-z0-9_-]{1,100}$"_s ).match( id ).hasMatch() )
       return error( tr( "ID non valido." ) );
     const QString kind = args.value( u"kind"_s ).toString( u"plans"_s );
     if ( kind != "plans"_L1 && kind != "runs"_L1 && kind != "resolve"_L1 )
       return error( tr( "Tipo risorsa non valido." ) );
+    if ( ( tool == "discovery_cancel"_L1 && kind == "resolve"_L1 ) || ( tool == "discovery_run"_L1 && kind != "plans"_L1 ) )
+      return error( tr( "Tipo risorsa non valido per questo tool." ) );
     if ( tool == "discovery_cancel"_L1 )
     {
+      const auto pending = mClient->snapshot( id );
+      if ( pending.contains( u"id"_s ) )
+        id = pending.value( u"id"_s ).toString();
+      else if ( pending.contains( u"requestId"_s ) )
+      {
+        if ( mClient->discardUnsent( id ) )
+          return { { u"requestId"_s, id }, { u"status"_s, u"CANCELLED"_s } };
+        auto grant = mGrants.value( id ).toObject();
+        grant.insert( u"cancelled"_s, true );
+        mGrants.insert( id, grant );
+        saveGrants();
+        return { { u"requestId"_s, id }, { u"status"_s, u"cancellation_requested"_s } };
+      }
       if ( mDownloads.value( id ) )
         mDownloads.value( id )->cancel();
       auto grant = mGrants.value( id ).toObject();
@@ -248,6 +263,19 @@ void QgsAiDiscoveryController::updated( const QString &kind, const QJsonObject &
   }
   if ( kind == "review"_L1 )
     return;
+  const QString pendingKey = result.value( u"requestId"_s ).toString();
+  if ( pendingKey != id && !id.isEmpty() && mGrants.value( pendingKey ).toObject().value( u"cancelled"_s ).toBool() )
+  {
+    mGrants.insert( id, mGrants.take( pendingKey ) );
+    saveGrants();
+    execute( u"discovery_cancel"_s, { { u"id"_s, id }, { u"kind"_s, kind } } );
+    return;
+  }
+  if ( kind == "plans"_L1 && ( result.value( u"cancelRequested"_s ).toBool() || mGrants.value( id ).toObject().value( u"cancelled"_s ).toBool() ) )
+  {
+    emit message( tr( "Ricerca annullata." ) );
+    return;
+  }
   if ( kind == "plans"_L1 && ( state == "SUCCEEDED"_L1 || state == "PARTIAL"_L1 ) && result.contains( u"candidates"_s ) )
     showPreview( result );
   if ( kind == "runs"_L1 )

@@ -58,6 +58,15 @@ void QgsAiDiscoveryClient::watch( const QString &kind, const QString &id )
   mTimer.start();
   poll();
 }
+bool QgsAiDiscoveryClient::discardUnsent( const QString &id )
+{
+  if ( !mPending.contains( id ) || mInFlight.contains( id ) || mPending.value( id ).toObject().value( u"attempts"_s ).toInt() > 0 )
+    return false;
+  mPending.remove( id );
+  mSnapshots.insert( id, QJsonObject { { u"requestId"_s, id }, { u"status"_s, u"CANCELLED"_s } } );
+  save();
+  return true;
+}
 QJsonObject QgsAiDiscoveryClient::snapshot( const QString &id ) const
 {
   return mSnapshots.value( id ).toObject();

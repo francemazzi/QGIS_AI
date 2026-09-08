@@ -54,7 +54,12 @@ QJsonObject QgsAiDiscoveryTool::schema() const
   {
     properties.insert( u"id"_s, prop( u"string"_s, u"Plan/run ID or local resolve request ID."_s ) );
     required.append( u"id"_s );
-    properties.insert( u"kind"_s, QJsonObject { { u"type"_s, u"string"_s }, { u"enum"_s, QJsonArray { u"plans"_s, u"runs"_s, u"resolve"_s } } } );
+    QJsonArray kinds { u"plans"_s };
+    if ( mName != "discovery_run"_L1 )
+      kinds.append( u"runs"_s );
+    if ( mName == "discovery_status"_L1 )
+      kinds.append( u"resolve"_s );
+    properties.insert( u"kind"_s, QJsonObject { { u"type"_s, u"string"_s }, { u"enum"_s, kinds } } );
   }
   return schemaObject( properties, required );
 }

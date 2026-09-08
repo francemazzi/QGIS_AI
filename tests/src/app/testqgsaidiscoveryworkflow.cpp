@@ -148,6 +148,12 @@ void TestQgsAiDiscoveryWorkflow::previewSelectionDownloadImport()
   controller.resume();
   QTest::qWait( 50 );
   QCOMPARE( server.requestCount, 6 );
+  server.responses << response( { { u"id"_s, u"cancel-plan"_s }, { u"status"_s, u"QUEUED"_s } } ) << response( { { u"id"_s, u"cancel-plan"_s }, { u"status"_s, u"CANCELLED"_s }, { u"cancelRequested"_s, true } } );
+  const auto pending = controller.execute( u"discovery_search"_s, { { u"resolutionId"_s, id }, { u"maxCredits"_s, 1 } } );
+  controller.execute( u"discovery_cancel"_s, { { u"id"_s, pending.value( u"requestId"_s ) }, { u"kind"_s, u"plans"_s } } );
+  QTRY_COMPARE( server.requestCount, 8 );
+  QCOMPARE( controller.execute( u"discovery_status"_s, { { u"id"_s, u"cancel-plan"_s }, { u"kind"_s, u"plans"_s } } ).value( u"status"_s ).toString(), u"CANCELLED"_s );
+  QCOMPARE( project.mapLayers().size(), 1 );
 }
 void TestQgsAiDiscoveryWorkflow::missingProviderIsAnImportFailure()
 {

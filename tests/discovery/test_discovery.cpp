@@ -84,6 +84,8 @@ class TestDiscovery : public QObject
       {
         QgsAiDiscoveryClient first( &network, []( QNetworkRequest & ) { return false; } );
         first.setScope( base, u"synthetic"_s );
+        const auto discarded = first.submit( u"/v1/discovery/plans"_s, { { u"maxCredits"_s, 3 } } );
+        QVERIFY( first.discardUnsent( discarded ) );
         key = first.submit( u"/v1/discovery/plans"_s, { { u"maxCredits"_s, 2 } } );
       }
       QVERIFY( requests.isEmpty() );
