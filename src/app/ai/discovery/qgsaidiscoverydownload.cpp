@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "qgsaidiscoverydownload.h"
+#include "moc_qgsaidiscoverydownload.cpp"
 
 #include <memory>
 

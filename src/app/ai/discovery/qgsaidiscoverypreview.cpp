@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "qgsaidiscoverypreview.h"
+#include "moc_qgsaidiscoverypreview.cpp"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -165,6 +166,6 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
   layout->addWidget( cancel );
   connect( cancel, &QPushButton::clicked, this, [this]() {
     setEnabled( false );
-    emit cancelled();
+    emit canceled();
   } );
 }

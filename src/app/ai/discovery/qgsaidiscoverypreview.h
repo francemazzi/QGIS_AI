@@ -14,6 +14,6 @@ class APP_EXPORT QgsAiDiscoveryPreview : public QWidget
     QgsAiDiscoveryPreview( const QJsonObject &plan, const QString &defaultDestination, QWidget *parent = nullptr );
   signals:
     void approved( const QJsonArray &selection, int maxCredits, const QString &destination );
-    void cancelled();
+    void canceled();
 };
 #endif

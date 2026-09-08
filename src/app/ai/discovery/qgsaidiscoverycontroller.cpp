@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "qgsaidiscoverycontroller.h"
+#include "moc_qgsaidiscoverycontroller.cpp"
 
 #include "qgsaidiscoverydownload.h"
 #include "qgsaidiscoveryfiles.h"
@@ -95,7 +96,7 @@ void QgsAiDiscoveryController::resume()
     return;
   mClient->resume();
   for ( auto it = mGrants.begin(); it != mGrants.end(); ++it )
-    if ( !it.value().toObject().value( u"imported"_s ).toBool() && !it.value().toObject().value( u"cancelled"_s ).toBool() && mClient->snapshot( it.key() ).value( u"id"_s ) == it.key() )
+    if ( !it.value().toObject().value( u"imported"_s ).toBool() && !it.value().toObject().value( u"canceled"_s ).toBool() && mClient->snapshot( it.key() ).value( u"id"_s ) == it.key() )
       mClient->watch( u"runs"_s, it.key() );
 }
 void QgsAiDiscoveryController::saveGrants()
@@ -127,7 +128,7 @@ QJsonObject QgsAiDiscoveryController::execute( const QString &tool, QJsonObject 
         if ( mClient->discardUnsent( id ) )
           return { { u"requestId"_s, id }, { u"status"_s, u"CANCELLED"_s } };
         auto grant = mGrants.value( id ).toObject();
-        grant.insert( u"cancelled"_s, true );
+        grant.insert( u"canceled"_s, true );
         mGrants.insert( id, grant );
         saveGrants();
         return { { u"requestId"_s, id }, { u"status"_s, u"cancellation_requested"_s } };
@@ -135,7 +136,7 @@ QJsonObject QgsAiDiscoveryController::execute( const QString &tool, QJsonObject 
       if ( mDownloads.value( id ) )
         mDownloads.value( id )->cancel();
       auto grant = mGrants.value( id ).toObject();
-      grant.insert( u"cancelled"_s, true );
+      grant.insert( u"canceled"_s, true );
       mGrants.insert( id, grant );
       saveGrants();
       QJsonObject body;
@@ -211,7 +212,7 @@ void QgsAiDiscoveryController::showPreview( const QJsonObject &plan )
     if ( scope() && currentScope == mScope )
       approve( plan, selection, budget, destination );
   } );
-  connect( preview, &QgsAiDiscoveryPreview::cancelled, this, [this, id, currentScope]() {
+  connect( preview, &QgsAiDiscoveryPreview::canceled, this, [this, id, currentScope]() {
     if ( scope() && currentScope == mScope )
       execute( u"discovery_cancel"_s, { { u"id"_s, id }, { u"kind"_s, u"plans"_s } } );
   } );
@@ -264,14 +265,14 @@ void QgsAiDiscoveryController::updated( const QString &kind, const QJsonObject &
   if ( kind == "review"_L1 )
     return;
   const QString pendingKey = result.value( u"requestId"_s ).toString();
-  if ( pendingKey != id && !id.isEmpty() && mGrants.value( pendingKey ).toObject().value( u"cancelled"_s ).toBool() )
+  if ( pendingKey != id && !id.isEmpty() && mGrants.value( pendingKey ).toObject().value( u"canceled"_s ).toBool() )
   {
     mGrants.insert( id, mGrants.take( pendingKey ) );
     saveGrants();
     execute( u"discovery_cancel"_s, { { u"id"_s, id }, { u"kind"_s, kind } } );
     return;
   }
-  if ( kind == "plans"_L1 && ( result.value( u"cancelRequested"_s ).toBool() || mGrants.value( id ).toObject().value( u"cancelled"_s ).toBool() ) )
+  if ( kind == "plans"_L1 && ( result.value( u"cancelRequested"_s ).toBool() || mGrants.value( id ).toObject().value( u"canceled"_s ).toBool() ) )
   {
     emit message( tr( "Ricerca annullata." ) );
     return;

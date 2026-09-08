@@ -17,14 +17,14 @@
 #include <QPushButton>
 #include <QSaveFile>
 #include <QString>
-#include <QtConcurrent>
+#include <QtConcurrentRun>
 
 using namespace Qt::StringLiterals;
 void QgsAiDiscoveryController::deliver( const QJsonObject &run )
 {
   const QString id = run.value( u"id"_s ).toString();
   const auto grant = mGrants.value( id ).toObject();
-  if ( grant.isEmpty() || grant.value( u"imported"_s ).toBool() || grant.value( u"cancelled"_s ).toBool() || mDelivering.contains( id ) )
+  if ( grant.isEmpty() || grant.value( u"imported"_s ).toBool() || grant.value( u"canceled"_s ).toBool() || mDelivering.contains( id ) )
     return;
   // A saved project can survive a crash between adding layers and saving the local grant.
   if ( mProject )
@@ -49,7 +49,7 @@ void QgsAiDiscoveryController::deliver( const QJsonObject &run )
   if ( actual.size() != selection.size() )
     return;
   for ( int i = 0; i < actual.size(); ++i )
-    for ( const auto key : { u"candidateId"_s, u"mode"_s } )
+    for ( const auto &key : { u"candidateId"_s, u"mode"_s } )
       if ( actual[i].toObject().value( key ) != selection[i].toObject().value( key ) )
         return;
   const QString root = grant.value( u"root"_s ).toString();
@@ -69,7 +69,7 @@ void QgsAiDiscoveryController::deliver( const QJsonObject &run )
   connect( download, &QgsAiDiscoveryDownload::finished, this, [this, download, id, grant, artifact, currentScope]( const QString &path, const QString &error ) {
     download->deleteLater();
     mDownloads.remove( id );
-    if ( mScope != currentScope || mGrants.value( id ).toObject().value( u"cancelled"_s ).toBool() )
+    if ( mScope != currentScope || mGrants.value( id ).toObject().value( u"canceled"_s ).toBool() )
     {
       mDelivering.remove( id );
       return;
@@ -108,7 +108,7 @@ void QgsAiDiscoveryController::verifyImport( const QString &runId, const QString
       return;
     }
     mDelivering.remove( runId );
-    if ( currentScope != mScope || !project || project != mProject || mGrants.value( runId ).toObject().value( u"cancelled"_s ).toBool() )
+    if ( currentScope != mScope || !project || project != mProject || mGrants.value( runId ).toObject().value( u"canceled"_s ).toBool() )
     {
       qDeleteAll( result.layers );
       return;

@@ -8,6 +8,7 @@
 
 #include <QCheckBox>
 #include <QCryptographicHash>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -18,7 +19,7 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTemporaryDir>
-#include <QtTest>
+#include <QTest>
 
 using namespace Qt::StringLiterals;
 class TestDiscovery : public QObject
@@ -121,7 +122,7 @@ class TestDiscovery : public QObject
           QTimer::singleShot( 10, &download, &QgsAiDiscoveryDownload::cancel );
         } );
       } );
-      const auto destination = root.filePath( u"cancelled.zip"_s );
+      const auto destination = root.filePath( u"canceled.zip"_s );
       download.start( QUrl( u"http://127.0.0.1:%1/kit"_s.arg( server.serverPort() ) ), root.path(), destination, QString( 64, '0' ), 10000 );
       QTRY_COMPARE( finished.size(), 1 );
       QVERIFY( !finished[0][1].toString().isEmpty() );
