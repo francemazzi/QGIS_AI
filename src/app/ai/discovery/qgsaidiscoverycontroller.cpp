@@ -3,8 +3,8 @@
 
 #include "qgsaidiscoverydownload.h"
 #include "qgsaidiscoveryfiles.h"
-#include "qgsaidiscoverypreview.h"
 #include "qgsaidiscoverypresentation.h"
+#include "qgsaidiscoverypreview.h"
 #include "qgsaifilecontextprovider.h"
 #include "qgsaimodelrouter.h"
 #include "qgsaiplanclient.h"

@@ -4,21 +4,21 @@
 #include "qgsaidiscoveryclient.h"
 #include "qgsaidiscoverydownload.h"
 #include "qgsaidiscoveryfiles.h"
-#include "qgsaidiscoverypreview.h"
 #include "qgsaidiscoverypresentation.h"
+#include "qgsaidiscoverypreview.h"
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QCryptographicHash>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QLabel>
 #include <QPushButton>
 #include <QSettings>
-#include <QSpinBox>
-#include <QLabel>
-#include <QComboBox>
 #include <QSignalSpy>
+#include <QSpinBox>
 #include <QString>
 #include <QTcpServer>
 #include <QTcpSocket>
