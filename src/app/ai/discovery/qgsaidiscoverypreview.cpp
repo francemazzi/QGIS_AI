@@ -18,6 +18,14 @@ using namespace Qt::StringLiterals;
 static QString displayLabel( const QString &id )
 {
   static const QHash<QString, QString> labels {
+    { u"identified"_s, QObject::tr( "Contenuto identificato" ) },
+    { u"unverified"_s, QObject::tr( "Da verificare" ) },
+    { u"rejected"_s, QObject::tr( "Non importabile" ) },
+    { u"table"_s, QObject::tr( "Tabella: richiede collegamento geografico" ) },
+    { u"unknown"_s, QObject::tr( "Non disponibile" ) },
+    { u"covered"_s, QObject::tr( "Area coperta" ) },
+    { u"partial"_s, QObject::tr( "Copertura parziale" ) },
+    { u"incompatible"_s, QObject::tr( "Fuori area" ) },
     { u"boundary"_s, QObject::tr( "Confini" ) },
     { u"public_green"_s, QObject::tr( "Verde pubblico" ) },
     { u"trees"_s, QObject::tr( "Censimento arboreo" ) },
@@ -109,7 +117,7 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
     layout->addWidget( bytes );
     byteLimits << bytes;
     if ( !content.isEmpty() )
-      label( tr( "Contenuto: %1 · %2\n%3" ).arg( content.value( u"kind"_s ).toString(), content.value( u"status"_s ).toString(), content.value( u"reason"_s ).toString() ) );
+      label( tr( "Contenuto: %1 · %2\n%3" ).arg( displayLabel( content.value( u"kind"_s ).toString() ), displayLabel( content.value( u"status"_s ).toString() ), content.value( u"reason"_s ).toString() ) );
     if ( content.value( u"kind"_s ) == "table"_L1 || content.value( u"status"_s ) == "rejected"_L1 || c.value( u"spatialStatus"_s ) == "incompatible"_L1 )
       check->setEnabled( false );
     label( tr( "%1 · %2\n%3\nRequisiti: %4\n%5\nDimensione: %6 · tetto file: %7 crediti" )
@@ -122,6 +130,11 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
                c.contains( u"estimatedBytes"_s ) ? tr( "%1 MiB" ).arg( c.value( u"estimatedBytes"_s ).toDouble() / 1048576., 0, 'f', 1 ) : tr( "non disponibile" )
              )
              .arg( c.value( u"maxCredits"_s ).toInt() ) );
+    const auto period = c.value( u"observationPeriod"_s ).toObject();
+    label( tr( "Territorio: %1 · periodo del dato: %2 – %3\nModifica metadati: %4" ).arg(
+      displayLabel( c.value( u"spatialStatus"_s ).toString( u"unknown"_s ) ),
+      period.value( u"start"_s ).toString( tr( "non disponibile" ) ), period.value( u"end"_s ).toString( tr( "non disponibile" ) ),
+      c.value( u"metadataUpdatedAt"_s ).toString( tr( "non disponibile" ) ) ) );
     QStringList verification;
     for ( const auto &value : c.value( u"checks"_s ).toArray() )
     {
@@ -140,6 +153,7 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
   budget->setSuffix( tr( " crediti massimi di acquisizione" ) );
   layout->addWidget( budget );
   auto selectedGaps = label( tr( "Nessun candidato selezionato." ) );
+  selectedGaps->setObjectName( u"discoverySelectedGaps"_s );
   auto confirm = new QPushButton( tr( "Conferma selezione e acquisisci" ), this );
   confirm->setObjectName( u"discoveryConfirm"_s );
   layout->addWidget( confirm );

@@ -16,6 +16,7 @@
 #include <QSettings>
 #include <QSpinBox>
 #include <QLabel>
+#include <QComboBox>
 #include <QSignalSpy>
 #include <QString>
 #include <QTcpServer>
@@ -62,6 +63,18 @@ class TestDiscovery : public QObject
       button->click();
       QCOMPARE( accepted.size(), 1 );
       QCOMPARE( accepted[0][0].toJsonArray()[0].toObject().value( u"candidateId"_s ).toString(), u"candidate"_s );
+    }
+    void coverageUsesBackendEligibilityForSelectedMode()
+    {
+      const QJsonObject candidate { { u"id"_s, u"service"_s }, { u"title"_s, u"Synthetic WFS"_s }, { u"modes"_s, QJsonArray { u"file"_s, u"service"_s } },
+        { u"eligibleRequirementsByMode"_s, QJsonObject { { u"file"_s, QJsonArray {} }, { u"service"_s, QJsonArray { u"boundary"_s } } } } };
+      QgsAiDiscoveryPreview preview( { { u"expiresAt"_s, u"2099-01-01T00:00:00.000Z"_s }, { u"candidates"_s, QJsonArray { candidate } },
+        { u"coverage"_s, QJsonObject { { u"required"_s, QJsonArray { u"boundary"_s } } } } }, u"test"_s );
+      preview.findChildren<QCheckBox *>()[0]->setChecked( true );
+      auto gaps = preview.findChild<QLabel *>( u"discoverySelectedGaps"_s );
+      QVERIFY( gaps->text().contains( u"Confini"_s ) );
+      preview.findChild<QComboBox *>()->setCurrentIndex( 1 );
+      QVERIFY( !gaps->text().contains( u"Confini"_s ) );
     }
     void unknownContentRequiresExplicitConsent()
     {
