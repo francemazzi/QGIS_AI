@@ -76,6 +76,8 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
   const auto candidates = plan.value( u"candidates"_s ).toArray();
   QList<QCheckBox *> checks;
   QList<QComboBox *> modes;
+  QList<QCheckBox *> consent;
+  QList<QSpinBox *> byteLimits;
   for ( const auto &value : candidates )
   {
     const auto c = value.toObject();
@@ -91,6 +93,25 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
     layout->addWidget( mode );
     checks << check;
     modes << mode;
+    const auto content = c.value( u"content"_s ).toObject();
+    const bool uncertain = content.value( u"status"_s ) == "unverified"_L1;
+    auto allow = new QCheckBox( tr( "Autorizzo un tentativo sul contenuto non verificato" ), this );
+    allow->setObjectName( u"discoveryContentConsent"_s );
+    allow->setVisible( uncertain );
+    layout->addWidget( allow );
+    consent << allow;
+    auto bytes = new QSpinBox( this );
+    bytes->setObjectName( u"discoveryCandidateMiB"_s );
+    bytes->setRange( 1, 2048 );
+    bytes->setValue( 16 );
+    bytes->setSuffix( tr( " MiB massimi per questo tentativo" ) );
+    bytes->setVisible( uncertain );
+    layout->addWidget( bytes );
+    byteLimits << bytes;
+    if ( !content.isEmpty() )
+      label( tr( "Contenuto: %1 · %2\n%3" ).arg( content.value( u"kind"_s ).toString(), content.value( u"status"_s ).toString(), content.value( u"reason"_s ).toString() ) );
+    if ( content.value( u"kind"_s ) == "table"_L1 || content.value( u"status"_s ) == "rejected"_L1 || c.value( u"spatialStatus"_s ) == "incompatible"_L1 )
+      check->setEnabled( false );
     label( tr( "%1 · %2\n%3\nRequisiti: %4\n%5\nDimensione: %6 · tetto file: %7 crediti" )
              .arg(
                c.value( u"sourceName"_s ).toString(),
@@ -127,38 +148,45 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
   auto update = [=]() {
     QSet<QString> covered;
     int count = 0;
+    bool consentComplete = true;
     for ( int i = 0; i < checks.size(); ++i )
       if ( checks[i]->isChecked() )
       {
         ++count;
         const auto c = candidates[i].toObject();
-        QSet<QString> passed;
-        for ( const auto &v : c.value( u"checks"_s ).toArray() )
-          if ( v.toObject().value( u"passed"_s ) == true )
-            passed.insert( v.toObject().value( u"id"_s ).toString() );
-        const bool verified = passed.contains( u"publisher"_s )
-                              && passed.contains( u"license"_s )
-                              && passed.contains( u"coverage"_s )
-                              && passed.contains( u"protocol"_s )
-                              && passed.contains( u"freshness"_s );
-        if ( verified )
-          for ( const auto &v : c.value( u"requirements"_s ).toArray() )
-            covered.insert( v.toString() );
+        const QString mode = modes[i]->currentData().toString();
+        const bool uncertain = c.value( u"content"_s ).toObject().value( u"status"_s ) == "unverified"_L1;
+        if ( mode == "file"_L1 && uncertain && !consent[i]->isChecked() )
+          consentComplete = false;
+        for ( const auto &v : c.value( u"eligibleRequirementsByMode"_s ).toObject().value( mode ).toArray() )
+          covered.insert( v.toString() );
       }
     QStringList missing;
     for ( const auto &v : coverage.value( u"required"_s ).toArray() )
       if ( !covered.contains( v.toString() ) )
         missing << displayLabel( v.toString() );
     selectedGaps->setText( tr( "Selezionati: %1 · lacune della selezione: %2" ).arg( count ).arg( missing.join( ", "_L1 ) ) );
-    confirm->setEnabled( count > 0 && !expired );
+    confirm->setEnabled( count > 0 && !expired && consentComplete );
   };
   for ( auto check : checks )
     connect( check, &QCheckBox::toggled, this, update );
+  for ( auto allow : consent )
+    connect( allow, &QCheckBox::toggled, this, update );
+  for ( auto mode : modes )
+    connect( mode, &QComboBox::currentIndexChanged, this, update );
   connect( confirm, &QPushButton::clicked, this, [=, this]() {
     QJsonArray selection;
     for ( int i = 0; i < checks.size(); ++i )
       if ( checks[i]->isChecked() )
-        selection.append( QJsonObject { { u"candidateId"_s, candidates[i].toObject().value( u"id"_s ) }, { u"mode"_s, modes[i]->currentData().toString() } } );
+      {
+        QJsonObject item { { u"candidateId"_s, candidates[i].toObject().value( u"id"_s ) }, { u"mode"_s, modes[i]->currentData().toString() } };
+        if ( candidates[i].toObject().value( u"content"_s ).toObject().value( u"status"_s ) == "unverified"_L1 )
+        {
+          item.insert( u"allowUnverifiedContent"_s, consent[i]->isChecked() );
+          item.insert( u"maxBytes"_s, static_cast<qint64>( byteLimits[i]->value() ) * 1048576 );
+        }
+        selection.append( item );
+      }
     // Disable the whole card before emitting; no second confirmation or mutable selection after start.
     setEnabled( false );
     emit approved( selection, budget->value(), destination->text() );

@@ -14,6 +14,8 @@
 #include <QJsonDocument>
 #include <QPushButton>
 #include <QSettings>
+#include <QSpinBox>
+#include <QLabel>
 #include <QSignalSpy>
 #include <QString>
 #include <QTcpServer>
@@ -60,6 +62,24 @@ class TestDiscovery : public QObject
       button->click();
       QCOMPARE( accepted.size(), 1 );
       QCOMPARE( accepted[0][0].toJsonArray()[0].toObject().value( u"candidateId"_s ).toString(), u"candidate"_s );
+    }
+    void unknownContentRequiresExplicitConsent()
+    {
+      const QJsonObject candidate { { u"id"_s, u"uncertain"_s }, { u"title"_s, u"Synthetic archive"_s }, { u"modes"_s, QJsonArray { u"file"_s } },
+        { u"content"_s, QJsonObject { { u"kind"_s, u"unknown"_s }, { u"status"_s, u"unverified"_s } } },
+        { u"eligibleRequirementsByMode"_s, QJsonObject { { u"file"_s, QJsonArray {} } } } };
+      QgsAiDiscoveryPreview preview( { { u"expiresAt"_s, u"2099-01-01T00:00:00.000Z"_s }, { u"candidates"_s, QJsonArray { candidate } } }, u"test"_s );
+      QSignalSpy accepted( &preview, &QgsAiDiscoveryPreview::approved );
+      auto button = preview.findChild<QPushButton *>( u"discoveryConfirm"_s );
+      preview.findChildren<QCheckBox *>()[0]->setChecked( true );
+      QVERIFY( !button->isEnabled() );
+      preview.findChild<QCheckBox *>( u"discoveryContentConsent"_s )->setChecked( true );
+      QVERIFY( button->isEnabled() );
+      preview.findChild<QSpinBox *>( u"discoveryCandidateMiB"_s )->setValue( 8 );
+      button->click();
+      const auto item = accepted[0][0].toJsonArray()[0].toObject();
+      QVERIFY( item.value( u"allowUnverifiedContent"_s ).toBool() );
+      QCOMPARE( item.value( u"maxBytes"_s ).toInteger(), 8388608 );
     }
     void asyncRequestsResumeWithSameKey()
     {
