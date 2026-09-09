@@ -4,6 +4,7 @@
 #include "qgsaidiscoverydownload.h"
 #include "qgsaidiscoveryfiles.h"
 #include "qgsaidiscoverypreview.h"
+#include "qgsaidiscoverypresentation.h"
 #include "qgsaifilecontextprovider.h"
 #include "qgsaimodelrouter.h"
 #include "qgsaiplanclient.h"
@@ -304,11 +305,15 @@ void QgsAiDiscoveryController::updated( const QString &kind, const QJsonObject &
     }
     const auto progress = result.value( u"progress"_s ).toObject();
     if ( mProgress.value( id ) )
-      mProgress.value( id )->setText( tr( "%1 · %2 · %3/%4 candidati · %5 crediti" )
-                                        .arg( id, state )
-                                        .arg( progress.value( u"completed"_s ).toInt() )
-                                        .arg( progress.value( u"total"_s ).toInt() )
-                                        .arg( result.value( u"budget"_s ).toObject().value( u"creditsUsed"_s ).toInt() ) );
+      mProgress.value( id )->setText(
+        tr( "%1 · %2 · %3/%4 candidati · %5 crediti" )
+          .arg( id, state )
+          .arg( progress.value( u"completed"_s ).toInt() )
+          .arg( progress.value( u"total"_s ).toInt() )
+          .arg( result.value( u"budget"_s ).toObject().value( u"creditsUsed"_s ).toInt() )
+        + '\n'
+        + QgsAiDiscoveryPresentation::runResults( result )
+      );
 
     const QString key = result.value( u"requestId"_s ).toString();
     if ( mGrants.contains( key ) && !mGrants.contains( id ) )

@@ -5,6 +5,7 @@
 #include "qgsaidiscoverydownload.h"
 #include "qgsaidiscoveryfiles.h"
 #include "qgsaidiscoverypreview.h"
+#include "qgsaidiscoverypresentation.h"
 
 #include <QCheckBox>
 #include <QCryptographicHash>
@@ -66,10 +67,14 @@ class TestDiscovery : public QObject
     }
     void coverageUsesBackendEligibilityForSelectedMode()
     {
-      const QJsonObject candidate { { u"id"_s, u"service"_s }, { u"title"_s, u"Synthetic WFS"_s }, { u"modes"_s, QJsonArray { u"file"_s, u"service"_s } },
-        { u"eligibleRequirementsByMode"_s, QJsonObject { { u"file"_s, QJsonArray {} }, { u"service"_s, QJsonArray { u"boundary"_s } } } } };
-      QgsAiDiscoveryPreview preview( { { u"expiresAt"_s, u"2099-01-01T00:00:00.000Z"_s }, { u"candidates"_s, QJsonArray { candidate } },
-        { u"coverage"_s, QJsonObject { { u"required"_s, QJsonArray { u"boundary"_s } } } } }, u"test"_s );
+      const QJsonObject candidate {
+        { u"id"_s, u"service"_s },
+        { u"title"_s, u"Synthetic WFS"_s },
+        { u"modes"_s, QJsonArray { u"file"_s, u"service"_s } },
+        { u"eligibleRequirementsByMode"_s, QJsonObject { { u"file"_s, QJsonArray {} }, { u"service"_s, QJsonArray { u"boundary"_s } } } }
+      };
+      QgsAiDiscoveryPreview
+        preview( { { u"expiresAt"_s, u"2099-01-01T00:00:00.000Z"_s }, { u"candidates"_s, QJsonArray { candidate } }, { u"coverage"_s, QJsonObject { { u"required"_s, QJsonArray { u"boundary"_s } } } } }, u"test"_s );
       preview.findChildren<QCheckBox *>()[0]->setChecked( true );
       auto gaps = preview.findChild<QLabel *>( u"discoverySelectedGaps"_s );
       QVERIFY( gaps->text().contains( u"Confini"_s ) );
@@ -78,9 +83,13 @@ class TestDiscovery : public QObject
     }
     void unknownContentRequiresExplicitConsent()
     {
-      const QJsonObject candidate { { u"id"_s, u"uncertain"_s }, { u"title"_s, u"Synthetic archive"_s }, { u"modes"_s, QJsonArray { u"file"_s } },
+      const QJsonObject candidate {
+        { u"id"_s, u"uncertain"_s },
+        { u"title"_s, u"Synthetic archive"_s },
+        { u"modes"_s, QJsonArray { u"file"_s } },
         { u"content"_s, QJsonObject { { u"kind"_s, u"unknown"_s }, { u"status"_s, u"unverified"_s } } },
-        { u"eligibleRequirementsByMode"_s, QJsonObject { { u"file"_s, QJsonArray {} } } } };
+        { u"eligibleRequirementsByMode"_s, QJsonObject { { u"file"_s, QJsonArray {} } } }
+      };
       QgsAiDiscoveryPreview preview( { { u"expiresAt"_s, u"2099-01-01T00:00:00.000Z"_s }, { u"candidates"_s, QJsonArray { candidate } } }, u"test"_s );
       QSignalSpy accepted( &preview, &QgsAiDiscoveryPreview::approved );
       auto button = preview.findChild<QPushButton *>( u"discoveryConfirm"_s );
@@ -93,6 +102,15 @@ class TestDiscovery : public QObject
       const auto item = accepted[0][0].toJsonArray()[0].toObject();
       QVERIFY( item.value( u"allowUnverifiedContent"_s ).toBool() );
       QCOMPARE( item.value( u"maxBytes"_s ).toInteger(), 8388608 );
+    }
+    void acquisitionResultsExposeFailureAndUsage()
+    {
+      const auto text = QgsAiDiscoveryPresentation::runResults(
+        { { u"results"_s, QJsonArray { QJsonObject { { u"title"_s, u"Synthetic table"_s }, { u"status"_s, u"FAILED"_s }, { u"transferredBytes"_s, 1048576 }, { u"creditsCharged"_s, 1 }, { u"issues"_s, QJsonArray { u"No readable GIS layer"_s } } } } } }
+      );
+      QVERIFY( text.contains( u"Synthetic table"_s ) );
+      QVERIFY( text.contains( u"1.00 MiB"_s ) );
+      QVERIFY( text.contains( u"No readable GIS layer"_s ) );
     }
     void asyncRequestsResumeWithSameKey()
     {

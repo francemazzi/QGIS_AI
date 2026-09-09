@@ -42,12 +42,20 @@ class TestQgsAiDiscoveryWorkflow : public QObject
       QSettings().clear();
       QgsApplication::exitQgis();
     }
+    void previewSelectionDownloadImport_data();
     void previewSelectionDownloadImport();
     void missingProviderIsAnImportFailure();
     void nativeCrsMismatchProducesPartialImport();
 };
+void TestQgsAiDiscoveryWorkflow::previewSelectionDownloadImport_data()
+{
+  QTest::addColumn<bool>( "unverified" );
+  QTest::newRow( "identified" ) << false;
+  QTest::newRow( "explicit-content-consent" ) << true;
+}
 void TestQgsAiDiscoveryWorkflow::previewSelectionDownloadImport()
 {
+  QFETCH( bool, unverified );
   QTemporaryDir root;
   QVERIFY( root.isValid() );
   const QString path = root.filePath( u"source.zip"_s );
@@ -77,9 +85,17 @@ void TestQgsAiDiscoveryWorkflow::previewSelectionDownloadImport()
   archive.close();
   QgsAiTestLoopbackServer server;
   QVERIFY( server.listen( QHostAddress::LocalHost ) );
-  const QJsonObject
+  QJsonObject
     candidate { { u"id"_s, u"candidate"_s }, { u"key"_s, u"key"_s }, { u"title"_s, u"Synthetic boundary"_s }, { u"modes"_s, QJsonArray { u"file"_s } }, { u"requirements"_s, QJsonArray { u"boundary"_s } } };
-  const QJsonArray selection { QJsonObject { { u"candidateId"_s, u"candidate"_s }, { u"mode"_s, u"file"_s } } };
+  candidate.insert( u"content"_s, QJsonObject { { u"kind"_s, unverified ? u"unknown"_s : u"vector"_s }, { u"status"_s, unverified ? u"unverified"_s : u"identified"_s } } );
+  candidate.insert( u"eligibleRequirementsByMode"_s, QJsonObject { { u"file"_s, unverified ? QJsonArray {} : QJsonArray { u"boundary"_s } } } );
+  QJsonObject selected { { u"candidateId"_s, u"candidate"_s }, { u"mode"_s, u"file"_s } };
+  if ( unverified )
+  {
+    selected.insert( u"allowUnverifiedContent"_s, true );
+    selected.insert( u"maxBytes"_s, 16777216 );
+  }
+  const QJsonArray selection { selected };
   const QJsonObject
     plan { { u"id"_s, u"plan"_s }, { u"version"_s, 1 }, { u"status"_s, u"SUCCEEDED"_s }, { u"coverage"_s, coverage }, { u"candidates"_s, QJsonArray { candidate } }, { u"expiresAt"_s, u"2099-01-01T00:00:00.000Z"_s } };
   const QJsonObject run {
@@ -129,6 +145,12 @@ void TestQgsAiDiscoveryWorkflow::previewSelectionDownloadImport()
   QCOMPARE( server.requestCount, 2 );
   QVERIFY( project.mapLayers().isEmpty() );
   preview->findChild<QCheckBox *>()->setChecked( true );
+  if ( unverified )
+  {
+    QVERIFY( !preview->findChild<QPushButton *>( u"discoveryConfirm"_s )->isEnabled() );
+    QCOMPARE( server.requestCount, 2 );
+    preview->findChild<QCheckBox *>( u"discoveryContentConsent"_s )->setChecked( true );
+  }
   preview->findChild<QPushButton *>( u"discoveryConfirm"_s )->click();
   preview->findChild<QPushButton *>( u"discoveryConfirm"_s )->click();
   QTRY_COMPARE_WITH_TIMEOUT( project.mapLayers().size(), 1, 30000 );

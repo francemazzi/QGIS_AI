@@ -49,9 +49,15 @@ void QgsAiDiscoveryController::deliver( const QJsonObject &run )
   if ( actual.size() != selection.size() )
     return;
   for ( int i = 0; i < actual.size(); ++i )
+  {
     for ( const auto &key : { u"candidateId"_s, u"mode"_s } )
       if ( actual[i].toObject().value( key ) != selection[i].toObject().value( key ) )
         return;
+    if ( actual[i].toObject().value( u"allowUnverifiedContent"_s ).toBool() != selection[i].toObject().value( u"allowUnverifiedContent"_s ).toBool() )
+      return;
+    if ( selection[i].toObject().contains( u"maxBytes"_s ) && actual[i].toObject().value( u"maxBytes"_s ).toInteger() > selection[i].toObject().value( u"maxBytes"_s ).toInteger() )
+      return;
+  }
   const QString root = grant.value( u"root"_s ).toString();
   if ( !mFiles || mFiles->workspaceRoot() != root || !QgsAiWorkspaceTrust::isTrusted( root ) )
     return;

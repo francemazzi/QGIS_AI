@@ -82,6 +82,21 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
            .arg( plan.value( u"budget"_s ).toObject().value( u"creditsCharged"_s ).toInt() )
            .arg( plan.value( u"expiresAt"_s ).toString() ) );
   const auto candidates = plan.value( u"candidates"_s ).toArray();
+  const auto diagnostics = plan.value( u"diagnostics"_s ).toObject();
+  if ( !diagnostics.isEmpty() )
+  {
+    int cached = 0;
+    for ( const auto &harvest : diagnostics.value( u"harvests"_s ).toArray() )
+      if ( harvest.toObject().value( u"result"_s ).toObject().value( u"cached"_s ).toBool() )
+        ++cached;
+    label(
+      tr( "Ricerca: %1 candidati trovati, %2 verificati, %3 ricerche da cache.%4" )
+        .arg( diagnostics.value( u"matched"_s ).toInt() )
+        .arg( diagnostics.value( u"verified"_s ).toInt() )
+        .arg( cached )
+        .arg( diagnostics.value( u"catalogsIncomplete"_s ).toBool() || diagnostics.value( u"verificationLimitReached"_s ).toBool() ? tr( " Alcuni cataloghi o controlli sono incompleti." ) : QString() )
+    );
+  }
   QList<QCheckBox *> checks;
   QList<QComboBox *> modes;
   QList<QCheckBox *> consent;
@@ -102,7 +117,7 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
     checks << check;
     modes << mode;
     const auto content = c.value( u"content"_s ).toObject();
-    const bool uncertain = content.value( u"status"_s ) == "unverified"_L1;
+    const bool uncertain = content.value( u"status"_s ) == "unverified"_L1 && mode->count() > 0 && check->isEnabled();
     auto allow = new QCheckBox( tr( "Autorizzo un tentativo sul contenuto non verificato" ), this );
     allow->setObjectName( u"discoveryContentConsent"_s );
     allow->setVisible( uncertain );
@@ -131,10 +146,13 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
              )
              .arg( c.value( u"maxCredits"_s ).toInt() ) );
     const auto period = c.value( u"observationPeriod"_s ).toObject();
-    label( tr( "Territorio: %1 · periodo del dato: %2 – %3\nModifica metadati: %4" ).arg(
-      displayLabel( c.value( u"spatialStatus"_s ).toString( u"unknown"_s ) ),
-      period.value( u"start"_s ).toString( tr( "non disponibile" ) ), period.value( u"end"_s ).toString( tr( "non disponibile" ) ),
-      c.value( u"metadataUpdatedAt"_s ).toString( tr( "non disponibile" ) ) ) );
+    label( tr( "Territorio: %1 · periodo del dato: %2 – %3\nModifica metadati: %4" )
+             .arg(
+               displayLabel( c.value( u"spatialStatus"_s ).toString( u"unknown"_s ) ),
+               period.value( u"start"_s ).toString( tr( "non disponibile" ) ),
+               period.value( u"end"_s ).toString( tr( "non disponibile" ) ),
+               c.value( u"metadataUpdatedAt"_s ).toString( tr( "non disponibile" ) )
+             ) );
     QStringList verification;
     for ( const auto &value : c.value( u"checks"_s ).toArray() )
     {
@@ -148,6 +166,7 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
   destination->setObjectName( u"discoveryDestination"_s );
   layout->addWidget( destination );
   auto budget = new QSpinBox( this );
+  budget->setObjectName( u"discoveryAcquisitionBudget"_s );
   budget->setRange( 0, 1000000 );
   budget->setValue( 20 );
   budget->setSuffix( tr( " crediti massimi di acquisizione" ) );
@@ -163,6 +182,9 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
     QSet<QString> covered;
     int count = 0;
     bool consentComplete = true;
+    qint64 requestedBytes = 65536;
+    double minimumCredits = 0;
+    const int price = plan.value( u"budget"_s ).toObject().value( u"prices"_s ).toObject().value( u"datahub_extract"_s ).toInt( 1 );
     for ( int i = 0; i < checks.size(); ++i )
       if ( checks[i]->isChecked() )
       {
@@ -172,6 +194,12 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
         const bool uncertain = c.value( u"content"_s ).toObject().value( u"status"_s ) == "unverified"_L1;
         if ( mode == "file"_L1 && uncertain && !consent[i]->isChecked() )
           consentComplete = false;
+        if ( mode == "file"_L1 )
+        {
+          const qint64 bytes = uncertain ? static_cast<qint64>( byteLimits[i]->value() ) * 1048576 : c.value( u"estimatedBytes"_s ).toInteger( 1048576 );
+          requestedBytes += bytes + 1024;
+          minimumCredits += ( bytes + 1048575 ) / 1048576 * price;
+        }
         for ( const auto &v : c.value( u"eligibleRequirementsByMode"_s ).toObject().value( mode ).toArray() )
           covered.insert( v.toString() );
       }
@@ -180,7 +208,8 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
       if ( !covered.contains( v.toString() ) )
         missing << displayLabel( v.toString() );
     selectedGaps->setText( tr( "Selezionati: %1 · lacune della selezione: %2" ).arg( count ).arg( missing.join( ", "_L1 ) ) );
-    confirm->setEnabled( count > 0 && !expired && consentComplete );
+    selectedGaps->setText( selectedGaps->text() + tr( " · stima per i file e i tentativi scelti: %1 crediti" ).arg( minimumCredits ) );
+    confirm->setEnabled( count > 0 && !expired && consentComplete && minimumCredits <= budget->value() && requestedBytes <= 2147483648LL );
   };
   for ( auto check : checks )
     connect( check, &QCheckBox::toggled, this, update );
@@ -188,6 +217,9 @@ QgsAiDiscoveryPreview::QgsAiDiscoveryPreview( const QJsonObject &plan, const QSt
     connect( allow, &QCheckBox::toggled, this, update );
   for ( auto mode : modes )
     connect( mode, &QComboBox::currentIndexChanged, this, update );
+  for ( auto bytes : byteLimits )
+    connect( bytes, &QSpinBox::valueChanged, this, update );
+  connect( budget, &QSpinBox::valueChanged, this, update );
   connect( confirm, &QPushButton::clicked, this, [=, this]() {
     QJsonArray selection;
     for ( int i = 0; i < checks.size(); ++i )
